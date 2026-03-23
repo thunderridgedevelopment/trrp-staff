@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thunder Ridge RP - Staff Portal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Password Gate -->
+    <div id="login-screen">
+        <div class="login-box">
+            <div class="login-brand">
+                <img src="logo.png" alt="Thunder Ridge RP" class="login-logo">
+                <h1>THUNDER RIDGE RP</h1>
+                <p>Staff Portal &mdash; Authorized Personnel Only</p>
+            </div>
+            <form id="login-form">
+                <input type="password" id="password-input" placeholder="Enter staff password" autocomplete="off">
+                <button type="submit">Enter</button>
+                <p id="login-error" class="hidden">Incorrect password. Try again.</p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="hidden">
+
+        <!-- Sidebar -->
+        <nav id="sidebar">
+            <div class="sidebar-brand">
+                <img src="logo.png" alt="TRRP" style="width:36px;height:auto;margin-right:10px;vertical-align:middle;filter:drop-shadow(0 0 6px rgba(0,212,255,0.3));">
+                <h2 style="display:inline;vertical-align:middle;">TRRP STAFF</h2>
+            </div>
+            <ul>
+                <li><a href="#" class="nav-link active" data-page="dashboard">&#127968; Dashboard</a></li>
+                <li><a href="#" class="nav-link" data-page="faqs">&#10067; FAQs</a></li>
+                <li><a href="#" class="nav-link" data-page="sops">&#128214; SOPs</a></li>
+                <li><a href="#" class="nav-link" data-page="projects">&#128736; Projects</a></li>
+                <li><a href="#" class="nav-link" data-page="rules">&#9878; Rules</a></li>
+                <li><a href="#" class="nav-link" data-page="changelog">&#128240; Changelog</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="logout-btn">Logout</button>
+            </div>
+        </nav>
+
+        <!-- Content Area -->
+        <main id="content">
+
+            <!-- Mobile Header -->
+            <div id="mobile-header">
+                <button id="menu-toggle">&#9776;</button>
+                <h2>TRRP STAFF</h2>
+            </div>
+
+            <!-- Dashboard -->
+            <section id="page-dashboard" class="page active">
+                <div class="page-header">
+                    <h1>Dashboard</h1>
+                    <p>Welcome back, partner. Here's what's happening.</p>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Active Projects</h3>
+                        <span class="stat-number" id="stat-projects">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>SOPs</h3>
+                        <span class="stat-number" id="stat-sops">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>FAQs</h3>
+                        <span class="stat-number" id="stat-faqs">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Rules</h3>
+                        <span class="stat-number" id="stat-rules">0</span>
+                    </div>
+                </div>
+                <div class="recent-section">
+                    <h2>Recent Updates</h2>
+                    <div id="recent-updates" class="updates-list"></div>
+                </div>
+            </section>
+
+            <!-- FAQs -->
+            <section id="page-faqs" class="page">
+                <div class="page-header">
+                    <h1>Frequently Asked Questions</h1>
+                    <p>Common questions and answers for staff.</p>
+                </div>
+                <div class="search-bar">
+                    <input type="text" id="faq-search" placeholder="Search FAQs...">
+                </div>
+                <div id="faq-list" class="accordion-list"></div>
+            </section>
+
+            <!-- SOPs -->
+            <section id="page-sops" class="page">
+                <div class="page-header">
+                    <h1>Standard Operating Procedures</h1>
+                    <p>Official procedures and guidelines.</p>
+                </div>
+                <div class="search-bar">
+                    <input type="text" id="sop-search" placeholder="Search SOPs...">
+                </div>
+                <div id="sop-list" class="document-list"></div>
+            </section>
+
+            <!-- Projects -->
+            <section id="page-projects" class="page">
+                <div class="page-header">
+                    <h1>Projects</h1>
+                    <p>Track ongoing and upcoming work.</p>
+                </div>
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="in-progress">In Progress</button>
+                    <button class="filter-btn" data-filter="planned">Planned</button>
+                    <button class="filter-btn" data-filter="completed">Completed</button>
+                </div>
+                <div id="project-list" class="project-grid"></div>
+            </section>
+
+            <!-- Rules -->
+            <section id="page-rules" class="page">
+                <div class="page-header">
+                    <h1>Staff Rules &amp; Guidelines</h1>
+                    <p>Code of conduct and expectations.</p>
+                </div>
+                <div id="rules-list" class="rules-container"></div>
+            </section>
+
+            <!-- Changelog -->
+            <section id="page-changelog" class="page">
+                <div class="page-header">
+                    <h1>Changelog</h1>
+                    <p>Recent changes and updates to the server.</p>
+                </div>
+                <div id="changelog-list" class="changelog-container"></div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
