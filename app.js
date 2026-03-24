@@ -891,6 +891,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
                     <div class="fin-txn-meta">
                         ${formatDate(t.date)} &bull; ${t.submittedBy || "Unknown"}
+                        ${t.subtotal ? ` &bull; Subtotal: $${t.subtotal.toFixed(2)}` : ""}
+                        ${t.tax ? ` + Tax: $${t.tax.toFixed(2)}` : ""}
                         ${t.notes ? ` &bull; ${t.notes}` : ""}
                     </div>
                 </div>
@@ -898,7 +900,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     ${t.type === "income" ? "+" : "-"}$${(t.amount || 0).toFixed(2)}
                 </div>
                 <div class="fin-txn-actions">
-                    ${t.receiptData ? `<button class="fin-txn-receipt-btn" onclick="viewReceipt('${t.id}')">Receipt</button>` : ""}
                     ${isAdmin && t.status === "pending" ? `<button class="approve-entry-btn" onclick="approveTransaction('${t.id}')">Approve</button>` : ""}
                     ${isAdmin ? `<button class="delete-entry-btn" onclick="deleteTransaction('${t.id}')">Delete</button>` : ""}
                 </div>
@@ -1148,55 +1149,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // Receipt handling
-    let selectedReceiptData = null;
-    let selectedReceiptName = null;
-    const receiptInput = $("#txn-receipt");
-    const receiptDropArea = $("#receipt-drop-area");
-
-    receiptInput.addEventListener("change", handleReceiptSelect);
-
-    receiptDropArea.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        receiptDropArea.classList.add("dragover");
-    });
-    receiptDropArea.addEventListener("dragleave", () => receiptDropArea.classList.remove("dragover"));
-    receiptDropArea.addEventListener("drop", (e) => {
-        e.preventDefault();
-        receiptDropArea.classList.remove("dragover");
-        if (e.dataTransfer.files.length) {
-            receiptInput.files = e.dataTransfer.files;
-            handleReceiptSelect();
-        }
-    });
-
-    function handleReceiptSelect() {
-        const file = receiptInput.files[0];
-        if (!file) return;
-        if (file.size > 2 * 1024 * 1024) {
-            alert("Receipt must be under 2MB");
-            receiptInput.value = "";
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            selectedReceiptData = e.target.result;
-            selectedReceiptName = file.name;
-            $("#receipt-file-name").textContent = file.name;
-            $("#receipt-preview").classList.remove("hidden");
-            receiptDropArea.classList.add("hidden");
-        };
-        reader.readAsDataURL(file);
-    }
-
-    $("#receipt-remove").addEventListener("click", () => {
-        selectedReceiptData = null;
-        selectedReceiptName = null;
-        receiptInput.value = "";
-        $("#receipt-preview").classList.add("hidden");
-        receiptDropArea.classList.remove("hidden");
-    });
-
     // Submit transaction
     $("#transaction-form").addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -1205,32 +1157,27 @@ document.addEventListener("DOMContentLoaded", function () {
         submitBtn.textContent = "Submitting...";
 
         const isAdmin = currentUserData.role === "admin";
+        const subtotal = parseFloat($("#txn-subtotal").value) || 0;
+        const tax = parseFloat($("#txn-tax").value) || 0;
+
         const txnData = {
             type: $("#txn-type").value,
             description: $("#txn-description").value.trim(),
             amount: parseFloat($("#txn-amount").value),
+            subtotal,
+            tax,
             category: $("#txn-category").value,
             date: $("#txn-date").value,
             notes: $("#txn-notes").value.trim(),
             status: isAdmin ? "approved" : "pending",
             submittedBy: currentUser.displayName || currentUser.email,
-            submittedByEmail: currentUser.email,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         };
-
-        if (selectedReceiptData) {
-            txnData.receiptData = selectedReceiptData;
-            txnData.receiptName = selectedReceiptName;
-        }
 
         await db.collection("transactions").add(txnData);
 
         // Reset
         $("#transaction-form").reset();
-        selectedReceiptData = null;
-        selectedReceiptName = null;
-        $("#receipt-preview").classList.add("hidden");
-        receiptDropArea.classList.remove("hidden");
         $$(".txn-tab").forEach((t) => t.classList.remove("active"));
         $$(".txn-tab")[0].classList.add("active");
         $("#txn-type").value = "expense";
@@ -1247,20 +1194,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // Filter listeners
     $("#fin-month-filter").addEventListener("change", renderFinancials);
     $("#fin-type-filter").addEventListener("change", renderFinancials);
-
-    // View receipt
-    window.viewReceipt = function (id) {
-        const txn = transactions.find((t) => t.id === id);
-        if (!txn || !txn.receiptData) return;
-
-        const body = $("#receipt-viewer-body");
-        if (txn.receiptData.startsWith("data:image")) {
-            body.innerHTML = `<img src="${txn.receiptData}" alt="Receipt">`;
-        } else {
-            body.innerHTML = `<a href="${txn.receiptData}" download="${txn.receiptName || 'receipt'}" class="sop-pdf-link">Download Receipt: ${txn.receiptName || "receipt"}</a>`;
-        }
-        $("#receipt-viewer-modal").classList.remove("hidden");
-    };
 
     // Approve/delete transactions
     window.approveTransaction = async function (id) {
