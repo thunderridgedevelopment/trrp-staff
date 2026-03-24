@@ -129,12 +129,14 @@ document.addEventListener("DOMContentLoaded", function () {
         $("#user-avatar").src = currentUser.photoURL || "";
         $("#welcome-name").textContent = (currentUser.displayName || "partner").split(" ")[0];
 
-        // Show admin controls
+        // Show admin nav
         if (currentUserData.role === "admin") {
             $("#admin-nav").classList.remove("hidden");
-            $("#create-faq-btn").classList.remove("hidden");
-            $("#create-sop-btn").classList.remove("hidden");
         }
+
+        // All approved users can create
+        $("#create-faq-btn").classList.remove("hidden");
+        $("#create-sop-btn").classList.remove("hidden");
 
         loadDynamicData().then(() => {
             renderAll();
@@ -332,14 +334,19 @@ document.addEventListener("DOMContentLoaded", function () {
         container.innerHTML = faqs
             .map(
                 (faq, i) => `
-            <div class="accordion-item" data-index="${i}">
+            <div class="accordion-item ${faq.status === "pending" ? "entry-pending" : ""}" data-index="${i}">
                 <div class="accordion-header">
                     <h3>${faq.question}<span class="accordion-tag">${faq.category}</span>
+                    ${faq.status === "pending" ? '<span class="pending-badge">PENDING</span>' : ""}
+                    ${faq.dynamic && isAdmin && faq.status === "pending" ? `<button class="approve-entry-btn" onclick="event.stopPropagation();approveFAQ('${faq.id}')">Approve</button>` : ""}
                     ${faq.dynamic && isAdmin ? `<button class="delete-entry-btn" onclick="event.stopPropagation();deleteFAQ('${faq.id}')">Delete</button>` : ""}</h3>
                     <span class="accordion-arrow">&#9660;</span>
                 </div>
                 <div class="accordion-body">
-                    <div class="accordion-body-inner">${faq.answer}</div>
+                    <div class="accordion-body-inner">
+                        ${faq.status === "pending" ? `<p class="submitted-by">Submitted by ${faq.createdBy}</p>` : ""}
+                        ${faq.answer}
+                    </div>
                 </div>
             </div>
         `
@@ -360,8 +367,10 @@ document.addEventListener("DOMContentLoaded", function () {
         container.innerHTML = sops
             .map(
                 (sop, i) => `
-            <div class="document-card" data-index="${i}">
+            <div class="document-card ${sop.status === "pending" ? "entry-pending" : ""}" data-index="${i}">
                 <h3>${sop.title}${sop.pdfData ? '<span class="sop-pdf-badge">PDF</span>' : ""}
+                ${sop.status === "pending" ? '<span class="pending-badge">PENDING</span>' : ""}
+                ${sop.dynamic && isAdmin && sop.status === "pending" ? `<button class="approve-entry-btn" onclick="event.stopPropagation();approveSOP('${sop.id}')">Approve</button>` : ""}
                 ${sop.dynamic && isAdmin ? `<button class="delete-entry-btn" onclick="event.stopPropagation();deleteSOP('${sop.id}')">Delete</button>` : ""}</h3>
                 <p>${sop.summary}</p>
                 <div class="document-meta">
@@ -370,6 +379,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
                 <div class="document-content">
                     <div class="document-content-inner">
+                        ${sop.status === "pending" ? `<p class="submitted-by">Submitted by ${sop.createdBy} — awaiting admin approval</p>` : ""}
                         ${sop.content ? sop.content : ""}
                         ${sop.pdfData ? `<a href="${sop.pdfData}" download="${sop.pdfName || 'document.pdf'}" class="sop-pdf-link" onclick="event.stopPropagation();">Download PDF: ${sop.pdfName || "document.pdf"}</a>` : ""}
                     </div>
@@ -579,27 +589,44 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function getAllFAQs() {
-        return [...dynamicFAQs.map((f) => ({
-            question: f.question,
-            answer: f.answer,
-            category: f.category,
-            id: f.id,
-            dynamic: true,
-        })), ...FAQS];
+        const isAdmin = currentUserData && currentUserData.role === "admin";
+        const mapped = dynamicFAQs
+            .filter((f) => isAdmin || f.status === "approved")
+            .map((f) => ({
+                question: f.question,
+                answer: f.answer,
+                category: f.category,
+                id: f.id,
+                dynamic: true,
+                status: f.status || "approved",
+                createdBy: f.createdBy || "",
+            }));
+        return [...mapped, ...FAQS];
     }
 
     function getAllSOPs() {
-        return [...dynamicSOPs.map((s) => ({
-            title: s.title,
-            summary: s.summary,
-            author: s.author || "Staff",
-            lastUpdated: s.lastUpdated || "",
-            content: s.content || "",
-            pdfData: s.pdfData || null,
-            pdfName: s.pdfName || null,
-            id: s.id,
-            dynamic: true,
-        })), ...SOPS];
+        const isAdmin = currentUserData && currentUserData.role === "admin";
+        const mapped = dynamicSOPs
+            .filter((s) => isAdmin || s.status === "approved")
+            .map((s) => ({
+                title: s.title,
+                summary: s.summary,
+                author: s.author || "Staff",
+                lastUpdated: s.lastUpdated || "",
+                content: s.content || "",
+                pdfData: s.pdfData || null,
+                pdfName: s.pdfName || null,
+                id: s.id,
+                dynamic: true,
+                status: s.status || "approved",
+                createdBy: s.createdBy || "",
+            }));
+        return [...mapped, ...SOPS];
+    }
+
+    function getPendingCount() {
+        return dynamicFAQs.filter((f) => f.status === "pending").length +
+               dynamicSOPs.filter((s) => s.status === "pending").length;
     }
 
     // ---- Modal Handling ----
@@ -623,16 +650,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!question || !answer) return;
 
+        const isAdmin = currentUserData.role === "admin";
         await db.collection("faqs").add({
             category,
             question,
             answer,
-            createdBy: currentUser.email,
+            status: isAdmin ? "approved" : "pending",
+            createdBy: currentUser.displayName || currentUser.email,
+            createdByEmail: currentUser.email,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
 
         $("#faq-form").reset();
         $("#faq-form-modal").classList.add("hidden");
+        if (!isAdmin) alert("FAQ submitted! It will appear once an admin approves it.");
         await loadDynamicData();
         renderFAQs(getAllFAQs());
         renderDashboard();
@@ -727,6 +758,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        const isAdmin = currentUserData.role === "admin";
         const today = new Date().toISOString().split("T")[0];
         const sopData = {
             title,
@@ -734,7 +766,9 @@ document.addEventListener("DOMContentLoaded", function () {
             content: content || "",
             author: currentUser.displayName || currentUser.email,
             lastUpdated: today,
-            createdBy: currentUser.email,
+            status: isAdmin ? "approved" : "pending",
+            createdBy: currentUser.displayName || currentUser.email,
+            createdByEmail: currentUser.email,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         };
 
@@ -754,11 +788,27 @@ document.addEventListener("DOMContentLoaded", function () {
         $("#sop-form-modal").classList.add("hidden");
         submitBtn.disabled = false;
         submitBtn.textContent = "Create SOP";
+        if (!isAdmin) alert("SOP submitted! It will appear once an admin approves it.");
 
         await loadDynamicData();
         renderSOPs(getAllSOPs());
         renderDashboard();
     });
+
+    // ---- Approve FAQ/SOP ----
+    window.approveFAQ = async function (id) {
+        await db.collection("faqs").doc(id).update({ status: "approved" });
+        await loadDynamicData();
+        renderFAQs(getAllFAQs());
+        renderDashboard();
+    };
+
+    window.approveSOP = async function (id) {
+        await db.collection("sops").doc(id).update({ status: "approved" });
+        await loadDynamicData();
+        renderSOPs(getAllSOPs());
+        renderDashboard();
+    };
 
     // ---- Delete FAQ/SOP ----
     window.deleteFAQ = async function (id) {
