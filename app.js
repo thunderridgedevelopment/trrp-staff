@@ -198,8 +198,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function renderOnlineUsers(users) {
-        const container = $("#online-users");
-        if (!container) return;
+        const countEl = $("#online-count");
+        const avatarsEl = $("#online-avatars");
+        if (!countEl || !avatarsEl) return;
 
         const pageLabels = {
             dashboard: "Dashboard",
@@ -211,17 +212,9 @@ document.addEventListener("DOMContentLoaded", function () {
             admin: "Admin Panel",
         };
 
-        container.innerHTML = users
-            .map((u) => `
-                <div class="online-user" title="${u.displayName} — viewing ${pageLabels[u.page] || u.page}">
-                    <img src="${u.photoURL}" alt="" class="online-avatar">
-                    <div class="online-info">
-                        <span class="online-name">${(u.displayName || "").split(" ")[0]}</span>
-                        <span class="online-page">${pageLabels[u.page] || u.page}</span>
-                    </div>
-                    <span class="online-dot"></span>
-                </div>
-            `)
+        countEl.textContent = `${users.length} online`;
+        avatarsEl.innerHTML = users
+            .map((u) => `<img src="${u.photoURL}" alt="${u.displayName}" class="online-avatar-pip" data-tooltip="${u.displayName} — ${pageLabels[u.page] || u.page}">`)
             .join("");
     }
 

@@ -76,10 +76,6 @@
                 <li><a href="#" class="nav-link" data-page="changelog">&#128240; Changelog</a></li>
                 <li id="admin-nav" class="hidden"><a href="#" class="nav-link" data-page="admin">&#128274; Admin Panel</a></li>
             </ul>
-            <div class="sidebar-online">
-                <h4>Online Now</h4>
-                <div id="online-users"></div>
-            </div>
             <div class="sidebar-footer">
                 <button id="logout-btn">Logout</button>
             </div>
@@ -88,10 +84,15 @@
         <!-- Content Area -->
         <main id="content">
 
-            <!-- Mobile Header -->
-            <div id="mobile-header">
-                <button id="menu-toggle">&#9776;</button>
-                <h2>TRRP STAFF</h2>
+            <!-- Top Bar -->
+            <div id="top-bar">
+                <div id="mobile-toggle">
+                    <button id="menu-toggle">&#9776;</button>
+                </div>
+                <div id="online-bar">
+                    <span id="online-count">0 online</span>
+                    <div id="online-avatars"></div>
+                </div>
             </div>
 
             <!-- Dashboard -->
