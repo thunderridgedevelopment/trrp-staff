@@ -790,6 +790,75 @@ body {
 }
 
 /* ============================================
+   ONLINE PRESENCE
+   ============================================ */
+
+.sidebar-online {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+}
+
+.sidebar-online h4 {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.online-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+}
+
+.online-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--success);
+    flex-shrink: 0;
+}
+
+.online-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.online-name {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.online-page {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+.online-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    flex-shrink: 0;
+    box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ============================================
    GOOGLE AUTH BUTTON
    ============================================ */
 

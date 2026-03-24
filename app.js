@@ -131,10 +131,108 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         renderAll();
+        startPresence();
+    }
+
+    // ---- Presence System ----
+    let currentPage = "dashboard";
+    let presenceInterval = null;
+    let presenceUnsubscribe = null;
+
+    function startPresence() {
+        const presenceRef = db.collection("presence").doc(currentUser.uid);
+
+        // Set initial presence
+        updatePresence();
+
+        // Update presence every 30 seconds (heartbeat)
+        presenceInterval = setInterval(updatePresence, 30000);
+
+        // Listen for all online users
+        presenceUnsubscribe = db.collection("presence")
+            .where("online", "==", true)
+            .onSnapshot((snapshot) => {
+                const onlineUsers = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    // Only show users with a recent heartbeat (within 60 seconds)
+                    if (data.lastSeen && data.lastSeen.toDate) {
+                        const lastSeen = data.lastSeen.toDate();
+                        const now = new Date();
+                        if (now - lastSeen < 60000) {
+                            onlineUsers.push({ uid: doc.id, ...data });
+                        }
+                    } else {
+                        onlineUsers.push({ uid: doc.id, ...data });
+                    }
+                });
+                renderOnlineUsers(onlineUsers);
+            });
+
+        // Clean up on page close
+        window.addEventListener("beforeunload", () => {
+            navigator.sendBeacon || presenceRef.update({ online: false });
+            // Use sendBeacon-compatible approach
+            const data = JSON.stringify({ online: false });
+            presenceRef.update({ online: false }).catch(() => {});
+        });
+
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                presenceRef.update({ online: false }).catch(() => {});
+            } else {
+                updatePresence();
+            }
+        });
+    }
+
+    function updatePresence() {
+        if (!currentUser) return;
+        db.collection("presence").doc(currentUser.uid).set({
+            displayName: currentUser.displayName || currentUser.email,
+            photoURL: currentUser.photoURL || "",
+            page: currentPage,
+            online: true,
+            lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }
+
+    function renderOnlineUsers(users) {
+        const container = $("#online-users");
+        if (!container) return;
+
+        const pageLabels = {
+            dashboard: "Dashboard",
+            faqs: "FAQs",
+            sops: "SOPs",
+            projects: "Projects",
+            rules: "Rules",
+            changelog: "Changelog",
+            admin: "Admin Panel",
+        };
+
+        container.innerHTML = users
+            .map((u) => `
+                <div class="online-user" title="${u.displayName} — viewing ${pageLabels[u.page] || u.page}">
+                    <img src="${u.photoURL}" alt="" class="online-avatar">
+                    <div class="online-info">
+                        <span class="online-name">${(u.displayName || "").split(" ")[0]}</span>
+                        <span class="online-page">${pageLabels[u.page] || u.page}</span>
+                    </div>
+                    <span class="online-dot"></span>
+                </div>
+            `)
+            .join("");
     }
 
     // ---- Logout ----
     function logout() {
+        // Set offline before signing out
+        if (currentUser) {
+            db.collection("presence").doc(currentUser.uid).update({ online: false }).catch(() => {});
+        }
+        if (presenceInterval) clearInterval(presenceInterval);
+        if (presenceUnsubscribe) presenceUnsubscribe();
         auth.signOut();
     }
 
@@ -155,6 +253,10 @@ document.addEventListener("DOMContentLoaded", function () {
             pages.forEach((p) => p.classList.remove("active"));
             $(`#page-${page}`).classList.add("active");
             closeMobileSidebar();
+
+            // Update presence with current page
+            currentPage = page;
+            updatePresence();
 
             if (page === "admin" && currentUserData.role === "admin") {
                 loadAdminUsers();
