@@ -12,6 +12,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const db = firebase.firestore();
     const googleProvider = new firebase.auth.GoogleAuthProvider();
 
+    // Dynamic data from Firestore
+    let dynamicFAQs = [];
+    let dynamicSOPs = [];
+
     // ---- DOM Elements ----
     const loginScreen = $("#login-screen");
     const bannedScreen = $("#banned-screen");
@@ -125,12 +129,16 @@ document.addEventListener("DOMContentLoaded", function () {
         $("#user-avatar").src = currentUser.photoURL || "";
         $("#welcome-name").textContent = (currentUser.displayName || "partner").split(" ")[0];
 
-        // Show admin nav if admin
+        // Show admin controls
         if (currentUserData.role === "admin") {
             $("#admin-nav").classList.remove("hidden");
+            $("#create-faq-btn").classList.remove("hidden");
+            $("#create-sop-btn").classList.remove("hidden");
         }
 
-        renderAll();
+        loadDynamicData().then(() => {
+            renderAll();
+        });
         startPresence();
     }
 
@@ -279,8 +287,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---- Render All Content ----
     function renderAll() {
         renderDashboard();
-        renderFAQs(FAQS);
-        renderSOPs(SOPS);
+        renderFAQs(getAllFAQs());
+        renderSOPs(getAllSOPs());
         renderProjects(PROJECTS, "all");
         renderRules(RULES);
         renderChangelog(CHANGELOG);
@@ -291,8 +299,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---- Dashboard ----
     function renderDashboard() {
         $("#stat-projects").textContent = PROJECTS.filter((p) => p.status === "in-progress").length;
-        $("#stat-sops").textContent = SOPS.length;
-        $("#stat-faqs").textContent = FAQS.length;
+        $("#stat-sops").textContent = getAllSOPs().length;
+        $("#stat-faqs").textContent = getAllFAQs().length;
         $("#stat-rules").textContent = RULES.length;
 
         const updates = [];
@@ -319,13 +327,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // ---- FAQs ----
     function renderFAQs(faqs) {
+        const isAdmin = currentUserData && currentUserData.role === "admin";
         const container = $("#faq-list");
         container.innerHTML = faqs
             .map(
                 (faq, i) => `
             <div class="accordion-item" data-index="${i}">
                 <div class="accordion-header">
-                    <h3>${faq.question}<span class="accordion-tag">${faq.category}</span></h3>
+                    <h3>${faq.question}<span class="accordion-tag">${faq.category}</span>
+                    ${faq.dynamic && isAdmin ? `<button class="delete-entry-btn" onclick="event.stopPropagation();deleteFAQ('${faq.id}')">Delete</button>` : ""}</h3>
                     <span class="accordion-arrow">&#9660;</span>
                 </div>
                 <div class="accordion-body">
@@ -345,19 +355,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // ---- SOPs ----
     function renderSOPs(sops) {
+        const isAdmin = currentUserData && currentUserData.role === "admin";
         const container = $("#sop-list");
         container.innerHTML = sops
             .map(
                 (sop, i) => `
             <div class="document-card" data-index="${i}">
-                <h3>${sop.title}</h3>
+                <h3>${sop.title}${sop.pdfData ? '<span class="sop-pdf-badge">PDF</span>' : ""}
+                ${sop.dynamic && isAdmin ? `<button class="delete-entry-btn" onclick="event.stopPropagation();deleteSOP('${sop.id}')">Delete</button>` : ""}</h3>
                 <p>${sop.summary}</p>
                 <div class="document-meta">
                     <span>By ${sop.author}</span>
                     <span>Updated ${formatDate(sop.lastUpdated)}</span>
                 </div>
                 <div class="document-content">
-                    <div class="document-content-inner">${sop.content}</div>
+                    <div class="document-content-inner">
+                        ${sop.content ? sop.content : ""}
+                        ${sop.pdfData ? `<a href="${sop.pdfData}" download="${sop.pdfName || 'document.pdf'}" class="sop-pdf-link" onclick="event.stopPropagation();">Download PDF: ${sop.pdfName || "document.pdf"}</a>` : ""}
+                    </div>
                 </div>
             </div>
         `
@@ -444,7 +459,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const faqSearch = $("#faq-search");
         faqSearch.addEventListener("input", () => {
             const q = faqSearch.value.toLowerCase();
-            const filtered = FAQS.filter(
+            const filtered = getAllFAQs().filter(
                 (f) =>
                     f.question.toLowerCase().includes(q) ||
                     f.answer.toLowerCase().includes(q) ||
@@ -456,7 +471,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const sopSearch = $("#sop-search");
         sopSearch.addEventListener("input", () => {
             const q = sopSearch.value.toLowerCase();
-            const filtered = SOPS.filter(
+            const filtered = getAllSOPs().filter(
                 (s) =>
                     s.title.toLowerCase().includes(q) ||
                     s.summary.toLowerCase().includes(q) ||
@@ -541,6 +556,226 @@ document.addEventListener("DOMContentLoaded", function () {
         if (confirm("Are you sure you want to delete this user? They can sign up again.")) {
             await db.collection("users").doc(uid).delete();
             loadAdminUsers();
+        }
+    };
+
+    // ---- Dynamic Data Loading ----
+    async function loadDynamicData() {
+        try {
+            const faqSnap = await db.collection("faqs").orderBy("createdAt", "desc").get();
+            dynamicFAQs = [];
+            faqSnap.forEach((doc) => {
+                dynamicFAQs.push({ id: doc.id, ...doc.data() });
+            });
+
+            const sopSnap = await db.collection("sops").orderBy("createdAt", "desc").get();
+            dynamicSOPs = [];
+            sopSnap.forEach((doc) => {
+                dynamicSOPs.push({ id: doc.id, ...doc.data() });
+            });
+        } catch (e) {
+            console.log("No dynamic data yet:", e);
+        }
+    }
+
+    function getAllFAQs() {
+        return [...dynamicFAQs.map((f) => ({
+            question: f.question,
+            answer: f.answer,
+            category: f.category,
+            id: f.id,
+            dynamic: true,
+        })), ...FAQS];
+    }
+
+    function getAllSOPs() {
+        return [...dynamicSOPs.map((s) => ({
+            title: s.title,
+            summary: s.summary,
+            author: s.author || "Staff",
+            lastUpdated: s.lastUpdated || "",
+            content: s.content || "",
+            pdfData: s.pdfData || null,
+            pdfName: s.pdfName || null,
+            id: s.id,
+            dynamic: true,
+        })), ...SOPS];
+    }
+
+    // ---- Modal Handling ----
+    $$(".modal-close, .btn-cancel").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const modalId = btn.dataset.modal;
+            if (modalId) $(`#${modalId}`).classList.add("hidden");
+        });
+    });
+
+    // ---- Create FAQ ----
+    $("#create-faq-btn").addEventListener("click", () => {
+        $("#faq-form-modal").classList.remove("hidden");
+    });
+
+    $("#faq-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const category = $("#faq-form-category").value.trim();
+        const question = $("#faq-form-question").value.trim();
+        const answer = $("#faq-form-answer").value.trim();
+
+        if (!question || !answer) return;
+
+        await db.collection("faqs").add({
+            category,
+            question,
+            answer,
+            createdBy: currentUser.email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+
+        $("#faq-form").reset();
+        $("#faq-form-modal").classList.add("hidden");
+        await loadDynamicData();
+        renderFAQs(getAllFAQs());
+        renderDashboard();
+    });
+
+    // ---- Create SOP ----
+    $("#create-sop-btn").addEventListener("click", () => {
+        $("#sop-form-modal").classList.remove("hidden");
+    });
+
+    // Tab switching
+    $$(".form-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+            $$(".form-tab").forEach((t) => t.classList.remove("active"));
+            tab.classList.add("active");
+            $$(".form-tab-content").forEach((c) => c.classList.remove("active"));
+            $(`#sop-tab-${tab.dataset.tab}`).classList.add("active");
+        });
+    });
+
+    // PDF file handling
+    let selectedPdfData = null;
+    let selectedPdfName = null;
+
+    const pdfInput = $("#sop-form-pdf");
+    const pdfPreview = $("#pdf-preview");
+    const pdfFileName = $("#pdf-file-name");
+    const pdfDropArea = $("#pdf-drop-area");
+
+    pdfInput.addEventListener("change", handlePdfSelect);
+
+    pdfDropArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        pdfDropArea.classList.add("dragover");
+    });
+
+    pdfDropArea.addEventListener("dragleave", () => {
+        pdfDropArea.classList.remove("dragover");
+    });
+
+    pdfDropArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        pdfDropArea.classList.remove("dragover");
+        if (e.dataTransfer.files.length) {
+            pdfInput.files = e.dataTransfer.files;
+            handlePdfSelect();
+        }
+    });
+
+    function handlePdfSelect() {
+        const file = pdfInput.files[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert("PDF must be under 5MB");
+            pdfInput.value = "";
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            selectedPdfData = e.target.result;
+            selectedPdfName = file.name;
+            pdfFileName.textContent = file.name;
+            pdfPreview.classList.remove("hidden");
+            pdfDropArea.classList.add("hidden");
+        };
+        reader.readAsDataURL(file);
+    }
+
+    $("#pdf-remove").addEventListener("click", () => {
+        selectedPdfData = null;
+        selectedPdfName = null;
+        pdfInput.value = "";
+        pdfPreview.classList.add("hidden");
+        pdfDropArea.classList.remove("hidden");
+    });
+
+    $("#sop-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const submitBtn = $("#sop-submit-btn");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Creating...";
+
+        const title = $("#sop-form-title").value.trim();
+        const summary = $("#sop-form-summary").value.trim();
+        const content = $("#sop-form-content").value.trim();
+
+        if (!title || !summary) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Create SOP";
+            return;
+        }
+
+        const today = new Date().toISOString().split("T")[0];
+        const sopData = {
+            title,
+            summary,
+            content: content || "",
+            author: currentUser.displayName || currentUser.email,
+            lastUpdated: today,
+            createdBy: currentUser.email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        };
+
+        if (selectedPdfData) {
+            sopData.pdfData = selectedPdfData;
+            sopData.pdfName = selectedPdfName;
+        }
+
+        await db.collection("sops").add(sopData);
+
+        // Reset
+        $("#sop-form").reset();
+        selectedPdfData = null;
+        selectedPdfName = null;
+        pdfPreview.classList.add("hidden");
+        pdfDropArea.classList.remove("hidden");
+        $("#sop-form-modal").classList.add("hidden");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Create SOP";
+
+        await loadDynamicData();
+        renderSOPs(getAllSOPs());
+        renderDashboard();
+    });
+
+    // ---- Delete FAQ/SOP ----
+    window.deleteFAQ = async function (id) {
+        if (confirm("Delete this FAQ?")) {
+            await db.collection("faqs").doc(id).delete();
+            await loadDynamicData();
+            renderFAQs(getAllFAQs());
+            renderDashboard();
+        }
+    };
+
+    window.deleteSOP = async function (id) {
+        if (confirm("Delete this SOP?")) {
+            await db.collection("sops").doc(id).delete();
+            await loadDynamicData();
+            renderSOPs(getAllSOPs());
+            renderDashboard();
         }
     };
 

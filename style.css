@@ -1069,3 +1069,303 @@ body {
         align-items: flex-start;
     }
 }
+
+/* ============================================
+   CREATE BUTTON
+   ============================================ */
+
+.create-btn {
+    display: inline-block;
+    padding: 8px 18px;
+    background: var(--accent);
+    color: var(--bg-darkest);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: background 0.2s;
+}
+
+.create-btn:hover {
+    background: var(--accent-hover);
+}
+
+/* ============================================
+   MODAL
+   ============================================ */
+
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal.hidden { display: none; }
+
+.modal-content {
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.6rem;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.modal-close:hover { color: var(--accent-red); }
+
+/* ---- Forms ---- */
+.modal form {
+    padding: 24px;
+}
+
+.modal label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    margin-top: 16px;
+    font-weight: 600;
+}
+
+.modal label:first-child { margin-top: 0; }
+
+.modal input[type="text"],
+.modal textarea {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.modal input[type="text"]:focus,
+.modal textarea:focus {
+    border-color: var(--accent);
+}
+
+.modal textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.6;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.btn-cancel {
+    padding: 10px 20px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.btn-cancel:hover { border-color: var(--accent-red); color: var(--accent-red); }
+
+.btn-submit {
+    padding: 10px 24px;
+    background: var(--accent);
+    color: var(--bg-darkest);
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition: background 0.2s;
+}
+
+.btn-submit:hover { background: var(--accent-hover); }
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- Form Tabs ---- */
+.form-tabs {
+    display: flex;
+    gap: 0;
+    margin-top: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.form-tab {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.form-tab:hover { color: var(--text-secondary); }
+
+.form-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.form-tab-content { display: none; padding-top: 4px; }
+.form-tab-content.active { display: block; }
+
+/* ---- File Upload ---- */
+.file-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    position: relative;
+    margin-top: 8px;
+}
+
+.file-upload-area:hover {
+    border-color: var(--accent);
+}
+
+.file-upload-area.dragover {
+    border-color: var(--accent);
+    background: rgba(0, 212, 255, 0.05);
+}
+
+.file-upload-area p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+
+.file-hint {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.file-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+#pdf-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-top: 10px;
+}
+
+#pdf-file-name {
+    flex: 1;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.btn-remove {
+    padding: 4px 12px;
+    background: transparent;
+    border: 1px solid var(--accent-red-dim);
+    color: var(--accent-red);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.78rem;
+}
+
+.btn-remove:hover { background: rgba(232, 64, 87, 0.12); }
+
+/* ---- SOP PDF Badge ---- */
+.sop-pdf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    background: rgba(232, 64, 87, 0.12);
+    color: var(--accent-red);
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-left: 8px;
+}
+
+.sop-pdf-link {
+    display: inline-block;
+    padding: 8px 16px;
+    background: var(--accent);
+    color: var(--bg-darkest);
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-top: 12px;
+    transition: background 0.2s;
+}
+
+.sop-pdf-link:hover { background: var(--accent-hover); }
+
+/* ---- Delete Button for SOPs/FAQs ---- */
+.delete-entry-btn {
+    background: none;
+    border: 1px solid var(--accent-red-dim);
+    color: var(--accent-red);
+    padding: 4px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.72rem;
+    margin-left: 8px;
+    transition: all 0.2s;
+}
+
+.delete-entry-btn:hover {
+    background: rgba(232, 64, 87, 0.12);
+}
