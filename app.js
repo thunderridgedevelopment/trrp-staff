@@ -2,7 +2,7 @@
 // THUNDER RIDGE RP - Staff Portal App
 // ============================================
 
-(function () {
+document.addEventListener("DOMContentLoaded", function () {
     const $ = (sel) => document.querySelector(sel);
     const $$ = (sel) => document.querySelectorAll(sel);
 
@@ -458,4 +458,4 @@
             year: "numeric",
         });
     }
-})();
+});
