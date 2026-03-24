@@ -1,17 +1,26 @@
 // ============================================
-// STAFF PORTAL - ALL CONTENT DATA
+// THUNDER RIDGE RP - STAFF PORTAL CONFIG
 // ============================================
 // Edit this file to update all site content.
-// No coding knowledge needed — just follow the patterns below.
 // ============================================
 
-const SITE_CONFIG = {
-    // Change this to set the staff password
-    password: "staff2026",
-
-    // Site title (shown in sidebar and login)
-    title: "THUNDER RIDGE RP",
+// ---- Firebase Config ----
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBiuQ-4Ji_FmLLATH4Zh55bqfF2o1T9q-8",
+    authDomain: "trrp-staff.firebaseapp.com",
+    projectId: "trrp-staff",
+    storageBucket: "trrp-staff.firebasestorage.app",
+    messagingSenderId: "986582004945",
+    appId: "1:986582004945:web:5c00509341e592bbb0c1f0",
+    measurementId: "G-717DKHVTW8",
 };
+
+// ---- Admin Emails ----
+// These emails automatically get admin access on first sign-in.
+// Everyone else goes to "pending" until an admin approves them.
+const ADMIN_EMAILS = [
+    "thunderridgedevelopment@gmail.com",
+];
 
 // ============================================
 // FAQs
@@ -201,13 +210,23 @@ const RULES = [
 // ============================================
 const CHANGELOG = [
     {
+        date: "2026-03-23",
+        title: "Staff Portal v2 Launch",
+        tags: ["added"],
+        changes: [
+            "Google sign-in authentication",
+            "Admin panel with user management",
+            "Ban/unban and approval system",
+            "Role-based access control",
+        ],
+    },
+    {
         date: "2026-03-22",
         title: "Staff Portal Launch",
         tags: ["added"],
         changes: [
             "Launched the new staff portal website",
             "Added FAQs, SOPs, Projects, and Rules sections",
-            "Implemented password-protected access",
             "Mobile-responsive design",
         ],
     },
