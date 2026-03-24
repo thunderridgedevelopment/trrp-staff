@@ -219,6 +219,7 @@ document.addEventListener("DOMContentLoaded", function () {
             projects: "Projects",
             rules: "Rules",
             changelog: "Changelog",
+            financials: "Financials",
             admin: "Admin Panel",
         };
 
@@ -263,6 +264,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (page === "admin" && currentUserData.role === "admin") {
                 loadAdminUsers();
+            }
+            if (page === "financials") {
+                loadTransactions().then(renderFinancials);
             }
         });
     });
@@ -630,11 +634,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ---- Modal Handling ----
-    $$(".modal-close, .btn-cancel").forEach((btn) => {
-        btn.addEventListener("click", () => {
+    document.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-modal]");
+        if (btn) {
             const modalId = btn.dataset.modal;
             if (modalId) $(`#${modalId}`).classList.add("hidden");
-        });
+        }
     });
 
     // ---- Create FAQ ----
@@ -794,6 +799,483 @@ document.addEventListener("DOMContentLoaded", function () {
         renderSOPs(getAllSOPs());
         renderDashboard();
     });
+
+    // ---- Financials ----
+    let transactions = [];
+
+    async function loadTransactions() {
+        try {
+            const snap = await db.collection("transactions").orderBy("date", "desc").get();
+            transactions = [];
+            snap.forEach((doc) => {
+                transactions.push({ id: doc.id, ...doc.data() });
+            });
+        } catch (e) {
+            console.log("No transactions yet:", e);
+        }
+    }
+
+    function renderFinancials() {
+        const isAdmin = currentUserData && currentUserData.role === "admin";
+        const monthFilter = $("#fin-month-filter").value;
+        const typeFilter = $("#fin-type-filter").value;
+
+        // Build month options
+        const months = new Set();
+        transactions.forEach((t) => {
+            if (t.date) {
+                const d = t.date.substring(0, 7);
+                months.add(d);
+            }
+        });
+        const monthSelect = $("#fin-month-filter");
+        const currentVal = monthSelect.value;
+        monthSelect.innerHTML = '<option value="all">All Time</option>';
+        [...months].sort().reverse().forEach((m) => {
+            const [y, mo] = m.split("-");
+            const label = new Date(y, mo - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+            monthSelect.innerHTML += `<option value="${m}">${label}</option>`;
+        });
+        monthSelect.value = currentVal || "all";
+
+        // Filter transactions
+        let filtered = transactions.filter((t) => {
+            if (!isAdmin && t.status === "pending") return false;
+            if (monthFilter !== "all" && !t.date.startsWith(monthFilter)) return false;
+            if (typeFilter !== "all" && t.type !== typeFilter) return false;
+            return true;
+        });
+
+        // Calculate totals (only approved)
+        const approved = transactions.filter((t) => t.status === "approved");
+        const filteredApproved = approved.filter((t) => {
+            if (monthFilter !== "all" && !t.date.startsWith(monthFilter)) return false;
+            if (typeFilter !== "all" && t.type !== typeFilter) return false;
+            return true;
+        });
+
+        const totalIncome = filteredApproved.filter((t) => t.type === "income").reduce((sum, t) => sum + (t.amount || 0), 0);
+        const totalExpenses = filteredApproved.filter((t) => t.type === "expense").reduce((sum, t) => sum + (t.amount || 0), 0);
+        const netProfit = totalIncome - totalExpenses;
+
+        const margin = totalIncome > 0 ? ((netProfit / totalIncome) * 100) : 0;
+        const expenseRatio = totalIncome > 0 ? ((totalExpenses / totalIncome) * 100) : 0;
+
+        $("#fin-total-income").textContent = `$${totalIncome.toFixed(2)}`;
+        $("#fin-total-expenses").textContent = `$${totalExpenses.toFixed(2)}`;
+        $("#fin-total-profit").textContent = `${netProfit >= 0 ? "" : "-"}$${Math.abs(netProfit).toFixed(2)}`;
+        $("#fin-margin").textContent = `${margin.toFixed(1)}%`;
+        $("#fin-margin").className = `kpi-value ${margin >= 0 ? "kpi-cyan" : "kpi-red"}`;
+        $("#fin-expense-ratio").textContent = `${expenseRatio.toFixed(1)}%`;
+        $("#fin-txn-count").textContent = filteredApproved.length;
+
+        renderCharts(approved);
+
+        // Render list
+        const container = $("#fin-transactions");
+        if (filtered.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:40px;">No transactions yet.</p>';
+            return;
+        }
+
+        container.innerHTML = filtered.map((t) => `
+            <div class="fin-txn ${t.status === "pending" ? "txn-pending" : ""}">
+                <div class="fin-txn-icon type-${t.type}">
+                    ${t.type === "income" ? "&#8593;" : "&#8595;"}
+                </div>
+                <div class="fin-txn-info">
+                    <div class="fin-txn-desc">
+                        ${t.description}
+                        <span class="fin-txn-cat">${t.category}</span>
+                        ${t.status === "pending" ? '<span class="pending-badge">PENDING</span>' : ""}
+                    </div>
+                    <div class="fin-txn-meta">
+                        ${formatDate(t.date)} &bull; ${t.submittedBy || "Unknown"}
+                        ${t.notes ? ` &bull; ${t.notes}` : ""}
+                    </div>
+                </div>
+                <div class="fin-txn-amount amount-${t.type}">
+                    ${t.type === "income" ? "+" : "-"}$${(t.amount || 0).toFixed(2)}
+                </div>
+                <div class="fin-txn-actions">
+                    ${t.receiptData ? `<button class="fin-txn-receipt-btn" onclick="viewReceipt('${t.id}')">Receipt</button>` : ""}
+                    ${isAdmin && t.status === "pending" ? `<button class="approve-entry-btn" onclick="approveTransaction('${t.id}')">Approve</button>` : ""}
+                    ${isAdmin ? `<button class="delete-entry-btn" onclick="deleteTransaction('${t.id}')">Delete</button>` : ""}
+                </div>
+            </div>
+        `).join("");
+    }
+
+    // ---- Charts ----
+    let chartMonthly = null;
+    let chartExpenseCat = null;
+    let chartIncomeCat = null;
+    let chartProfitTrend = null;
+
+    const chartColors = {
+        cyan: "#00d4ff",
+        red: "#e84057",
+        green: "#4ade80",
+        yellow: "#fbbf24",
+        purple: "#a78bfa",
+        orange: "#fb923c",
+        pink: "#f472b6",
+        teal: "#2dd4bf",
+        blue: "#60a5fa",
+        lime: "#a3e635",
+    };
+    const catColorList = Object.values(chartColors);
+
+    const chartDefaults = {
+        color: "#8b99b0",
+        borderColor: "#2a3242",
+        responsive: true,
+        maintainAspectRatio: false,
+    };
+
+    function renderCharts(approved) {
+        renderMonthlyChart(approved);
+        renderExpenseCatChart(approved);
+        renderIncomeCatChart(approved);
+        renderProfitTrendChart(approved);
+    }
+
+    function getMonthlyData(data) {
+        const months = {};
+        data.forEach((t) => {
+            const m = t.date.substring(0, 7);
+            if (!months[m]) months[m] = { income: 0, expenses: 0 };
+            if (t.type === "income") months[m].income += t.amount;
+            else months[m].expenses += t.amount;
+        });
+        const sorted = Object.keys(months).sort();
+        return {
+            labels: sorted.map((m) => {
+                const [y, mo] = m.split("-");
+                return new Date(y, mo - 1).toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+            }),
+            income: sorted.map((m) => months[m].income),
+            expenses: sorted.map((m) => months[m].expenses),
+            profit: sorted.map((m) => months[m].income - months[m].expenses),
+        };
+    }
+
+    function renderMonthlyChart(data) {
+        const ctx = document.getElementById("chart-monthly");
+        if (!ctx) return;
+        if (chartMonthly) chartMonthly.destroy();
+
+        const monthly = getMonthlyData(data);
+
+        chartMonthly = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: monthly.labels,
+                datasets: [
+                    {
+                        label: "Revenue",
+                        data: monthly.income,
+                        backgroundColor: "rgba(74, 222, 128, 0.7)",
+                        borderColor: chartColors.green,
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    },
+                    {
+                        label: "Expenses",
+                        data: monthly.expenses,
+                        backgroundColor: "rgba(232, 64, 87, 0.7)",
+                        borderColor: chartColors.red,
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    },
+                    {
+                        label: "Profit",
+                        data: monthly.profit,
+                        backgroundColor: "rgba(0, 212, 255, 0.5)",
+                        borderColor: chartColors.cyan,
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    },
+                ],
+            },
+            options: {
+                ...chartDefaults,
+                plugins: {
+                    legend: { labels: { color: "#8b99b0", boxWidth: 12 } },
+                },
+                scales: {
+                    x: { ticks: { color: "#556178" }, grid: { color: "#1e2430" } },
+                    y: {
+                        ticks: { color: "#556178", callback: (v) => "$" + v },
+                        grid: { color: "#1e2430" },
+                    },
+                },
+            },
+        });
+    }
+
+    function renderExpenseCatChart(data) {
+        const ctx = document.getElementById("chart-expense-cat");
+        if (!ctx) return;
+        if (chartExpenseCat) chartExpenseCat.destroy();
+
+        const cats = {};
+        data.filter((t) => t.type === "expense").forEach((t) => {
+            cats[t.category] = (cats[t.category] || 0) + t.amount;
+        });
+
+        const labels = Object.keys(cats);
+        const values = Object.values(cats);
+
+        chartExpenseCat = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: labels.map((_, i) => catColorList[i % catColorList.length]),
+                    borderColor: "#141820",
+                    borderWidth: 2,
+                }],
+            },
+            options: {
+                ...chartDefaults,
+                cutout: "65%",
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: { color: "#8b99b0", boxWidth: 10, padding: 12, font: { size: 11 } },
+                    },
+                },
+            },
+        });
+    }
+
+    function renderIncomeCatChart(data) {
+        const ctx = document.getElementById("chart-income-cat");
+        if (!ctx) return;
+        if (chartIncomeCat) chartIncomeCat.destroy();
+
+        const cats = {};
+        data.filter((t) => t.type === "income").forEach((t) => {
+            cats[t.category] = (cats[t.category] || 0) + t.amount;
+        });
+
+        const labels = Object.keys(cats);
+        const values = Object.values(cats);
+
+        chartIncomeCat = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: labels.map((_, i) => catColorList[(i + 3) % catColorList.length]),
+                    borderColor: "#141820",
+                    borderWidth: 2,
+                }],
+            },
+            options: {
+                ...chartDefaults,
+                cutout: "65%",
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: { color: "#8b99b0", boxWidth: 10, padding: 12, font: { size: 11 } },
+                    },
+                },
+            },
+        });
+    }
+
+    function renderProfitTrendChart(data) {
+        const ctx = document.getElementById("chart-profit-trend");
+        if (!ctx) return;
+        if (chartProfitTrend) chartProfitTrend.destroy();
+
+        const monthly = getMonthlyData(data);
+        let cumulative = 0;
+        const cumulativeData = monthly.profit.map((p) => {
+            cumulative += p;
+            return cumulative;
+        });
+
+        chartProfitTrend = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: monthly.labels,
+                datasets: [{
+                    label: "Cumulative Profit",
+                    data: cumulativeData,
+                    borderColor: chartColors.cyan,
+                    backgroundColor: "rgba(0, 212, 255, 0.08)",
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: chartColors.cyan,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 2,
+                }],
+            },
+            options: {
+                ...chartDefaults,
+                plugins: {
+                    legend: { labels: { color: "#8b99b0", boxWidth: 12 } },
+                },
+                scales: {
+                    x: { ticks: { color: "#556178" }, grid: { color: "#1e2430" } },
+                    y: {
+                        ticks: { color: "#556178", callback: (v) => "$" + v },
+                        grid: { color: "#1e2430" },
+                    },
+                },
+            },
+        });
+    }
+
+    // Transaction form
+    $("#add-transaction-btn").addEventListener("click", () => {
+        $("#txn-date").value = new Date().toISOString().split("T")[0];
+        $("#transaction-modal").classList.remove("hidden");
+    });
+
+    // Type tabs
+    $$(".txn-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+            $$(".txn-tab").forEach((t) => t.classList.remove("active"));
+            tab.classList.add("active");
+            $("#txn-type").value = tab.dataset.txnType;
+        });
+    });
+
+    // Receipt handling
+    let selectedReceiptData = null;
+    let selectedReceiptName = null;
+    const receiptInput = $("#txn-receipt");
+    const receiptDropArea = $("#receipt-drop-area");
+
+    receiptInput.addEventListener("change", handleReceiptSelect);
+
+    receiptDropArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        receiptDropArea.classList.add("dragover");
+    });
+    receiptDropArea.addEventListener("dragleave", () => receiptDropArea.classList.remove("dragover"));
+    receiptDropArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        receiptDropArea.classList.remove("dragover");
+        if (e.dataTransfer.files.length) {
+            receiptInput.files = e.dataTransfer.files;
+            handleReceiptSelect();
+        }
+    });
+
+    function handleReceiptSelect() {
+        const file = receiptInput.files[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) {
+            alert("Receipt must be under 2MB");
+            receiptInput.value = "";
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            selectedReceiptData = e.target.result;
+            selectedReceiptName = file.name;
+            $("#receipt-file-name").textContent = file.name;
+            $("#receipt-preview").classList.remove("hidden");
+            receiptDropArea.classList.add("hidden");
+        };
+        reader.readAsDataURL(file);
+    }
+
+    $("#receipt-remove").addEventListener("click", () => {
+        selectedReceiptData = null;
+        selectedReceiptName = null;
+        receiptInput.value = "";
+        $("#receipt-preview").classList.add("hidden");
+        receiptDropArea.classList.remove("hidden");
+    });
+
+    // Submit transaction
+    $("#transaction-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const submitBtn = $("#txn-submit-btn");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+
+        const isAdmin = currentUserData.role === "admin";
+        const txnData = {
+            type: $("#txn-type").value,
+            description: $("#txn-description").value.trim(),
+            amount: parseFloat($("#txn-amount").value),
+            category: $("#txn-category").value,
+            date: $("#txn-date").value,
+            notes: $("#txn-notes").value.trim(),
+            status: isAdmin ? "approved" : "pending",
+            submittedBy: currentUser.displayName || currentUser.email,
+            submittedByEmail: currentUser.email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        };
+
+        if (selectedReceiptData) {
+            txnData.receiptData = selectedReceiptData;
+            txnData.receiptName = selectedReceiptName;
+        }
+
+        await db.collection("transactions").add(txnData);
+
+        // Reset
+        $("#transaction-form").reset();
+        selectedReceiptData = null;
+        selectedReceiptName = null;
+        $("#receipt-preview").classList.add("hidden");
+        receiptDropArea.classList.remove("hidden");
+        $$(".txn-tab").forEach((t) => t.classList.remove("active"));
+        $$(".txn-tab")[0].classList.add("active");
+        $("#txn-type").value = "expense";
+        $("#transaction-modal").classList.add("hidden");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit";
+
+        if (!isAdmin) alert("Transaction submitted! It will appear once an admin approves it.");
+
+        await loadTransactions();
+        renderFinancials();
+    });
+
+    // Filter listeners
+    $("#fin-month-filter").addEventListener("change", renderFinancials);
+    $("#fin-type-filter").addEventListener("change", renderFinancials);
+
+    // View receipt
+    window.viewReceipt = function (id) {
+        const txn = transactions.find((t) => t.id === id);
+        if (!txn || !txn.receiptData) return;
+
+        const body = $("#receipt-viewer-body");
+        if (txn.receiptData.startsWith("data:image")) {
+            body.innerHTML = `<img src="${txn.receiptData}" alt="Receipt">`;
+        } else {
+            body.innerHTML = `<a href="${txn.receiptData}" download="${txn.receiptName || 'receipt'}" class="sop-pdf-link">Download Receipt: ${txn.receiptName || "receipt"}</a>`;
+        }
+        $("#receipt-viewer-modal").classList.remove("hidden");
+    };
+
+    // Approve/delete transactions
+    window.approveTransaction = async function (id) {
+        await db.collection("transactions").doc(id).update({ status: "approved" });
+        await loadTransactions();
+        renderFinancials();
+    };
+
+    window.deleteTransaction = async function (id) {
+        if (confirm("Delete this transaction?")) {
+            await db.collection("transactions").doc(id).delete();
+            await loadTransactions();
+            renderFinancials();
+        }
+    };
 
     // ---- Approve FAQ/SOP ----
     window.approveFAQ = async function (id) {

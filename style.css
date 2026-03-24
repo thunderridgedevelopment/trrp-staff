@@ -1413,3 +1413,305 @@ body {
     font-style: italic;
     margin-bottom: 8px;
 }
+
+/* ============================================
+   FINANCIALS
+   ============================================ */
+
+/* ---- KPI Row ---- */
+.fin-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.fin-kpi {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    text-align: center;
+}
+
+.fin-kpi h3 {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.kpi-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    display: block;
+}
+
+.kpi-green { color: var(--success); }
+.kpi-red { color: var(--accent-red); }
+.kpi-cyan { color: var(--accent); }
+.kpi-yellow { color: var(--warning); }
+.kpi-muted { color: var(--text-secondary); }
+
+/* ---- Charts ---- */
+.fin-charts-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.fin-chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+}
+
+.fin-chart-card h3 {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+    font-weight: 600;
+}
+
+.fin-chart-card canvas {
+    max-height: 280px;
+    min-height: 220px;
+}
+
+@media (max-width: 768px) {
+    .fin-charts-row {
+        grid-template-columns: 1fr;
+    }
+    .fin-kpi-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.fin-section-title {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    margin: 24px 0 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-weight: 600;
+}
+
+.fin-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.fin-filters select {
+    padding: 8px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+}
+
+.fin-filters select:focus {
+    border-color: var(--accent);
+}
+
+.fin-transactions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.fin-txn {
+    display: flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.fin-txn.txn-pending {
+    border-color: var(--warning);
+    background: rgba(251, 191, 36, 0.04);
+}
+
+.fin-txn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.fin-txn-icon.type-income {
+    background: rgba(74, 222, 128, 0.12);
+    color: var(--success);
+}
+
+.fin-txn-icon.type-expense {
+    background: rgba(232, 64, 87, 0.12);
+    color: var(--accent-red);
+}
+
+.fin-txn-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.fin-txn-desc {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.fin-txn-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.fin-txn-cat {
+    display: inline-block;
+    padding: 1px 8px;
+    background: rgba(0, 212, 255, 0.08);
+    color: var(--accent);
+    border-radius: 10px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-left: 6px;
+}
+
+.fin-txn-amount {
+    font-size: 1.1rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.fin-txn-amount.amount-income { color: var(--success); }
+.fin-txn-amount.amount-expense { color: var(--accent-red); }
+
+.fin-txn-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.fin-txn-receipt-btn {
+    padding: 4px 10px;
+    background: none;
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.fin-txn-receipt-btn:hover {
+    background: rgba(0, 212, 255, 0.1);
+}
+
+/* Transaction form tabs */
+.txn-tab {
+    padding: 10px 24px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.txn-tab:hover { color: var(--text-secondary); }
+
+.txn-tab.active[data-txn-type="expense"] {
+    color: var(--accent-red);
+    border-bottom-color: var(--accent-red);
+}
+
+.txn-tab.active[data-txn-type="income"] {
+    color: var(--success);
+    border-bottom-color: var(--success);
+}
+
+.modal select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.modal select:focus { border-color: var(--accent); }
+
+.modal input[type="date"],
+.modal input[type="number"] {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    outline: none;
+    font-family: inherit;
+}
+
+.modal input[type="date"]:focus,
+.modal input[type="number"]:focus {
+    border-color: var(--accent);
+}
+
+#receipt-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-top: 10px;
+}
+
+#receipt-file-name {
+    flex: 1;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+#receipt-viewer-body img {
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: var(--radius);
+}
+
+@media (max-width: 768px) {
+    .fin-txn {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .fin-txn-amount {
+        font-size: 1rem;
+    }
+}

@@ -74,6 +74,7 @@
                 <li><a href="#" class="nav-link" data-page="projects">&#128736; Projects</a></li>
                 <li><a href="#" class="nav-link" data-page="rules">&#9878; Rules</a></li>
                 <li><a href="#" class="nav-link" data-page="changelog">&#128240; Changelog</a></li>
+                <li><a href="#" class="nav-link" data-page="financials">&#128176; Financials</a></li>
                 <li id="admin-nav" class="hidden"><a href="#" class="nav-link" data-page="admin">&#128274; Admin Panel</a></li>
             </ul>
             <div class="sidebar-footer">
@@ -250,6 +251,155 @@
                 <div id="changelog-list" class="changelog-container"></div>
             </section>
 
+            <!-- Financials -->
+            <section id="page-financials" class="page">
+                <div class="page-header">
+                    <h1>Financials</h1>
+                    <p>Server income &amp; expenses tracker.</p>
+                    <button id="add-transaction-btn" class="create-btn">+ Add Transaction</button>
+                </div>
+
+                <!-- KPI Row -->
+                <div class="fin-kpi-row">
+                    <div class="fin-kpi">
+                        <h3>Revenue</h3>
+                        <span id="fin-total-income" class="kpi-value kpi-green">$0.00</span>
+                    </div>
+                    <div class="fin-kpi">
+                        <h3>Expenses (COGS)</h3>
+                        <span id="fin-total-expenses" class="kpi-value kpi-red">$0.00</span>
+                    </div>
+                    <div class="fin-kpi">
+                        <h3>Net Profit</h3>
+                        <span id="fin-total-profit" class="kpi-value kpi-cyan">$0.00</span>
+                    </div>
+                    <div class="fin-kpi">
+                        <h3>Profit Margin</h3>
+                        <span id="fin-margin" class="kpi-value kpi-cyan">0%</span>
+                    </div>
+                    <div class="fin-kpi">
+                        <h3>Expense Ratio</h3>
+                        <span id="fin-expense-ratio" class="kpi-value kpi-yellow">0%</span>
+                    </div>
+                    <div class="fin-kpi">
+                        <h3>Transactions</h3>
+                        <span id="fin-txn-count" class="kpi-value kpi-muted">0</span>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="fin-charts-row">
+                    <div class="fin-chart-card fin-chart-wide">
+                        <h3>Revenue vs Expenses (Monthly)</h3>
+                        <canvas id="chart-monthly"></canvas>
+                    </div>
+                    <div class="fin-chart-card">
+                        <h3>Expense Breakdown</h3>
+                        <canvas id="chart-expense-cat"></canvas>
+                    </div>
+                </div>
+
+                <div class="fin-charts-row">
+                    <div class="fin-chart-card fin-chart-wide">
+                        <h3>Cumulative Profit</h3>
+                        <canvas id="chart-profit-trend"></canvas>
+                    </div>
+                    <div class="fin-chart-card">
+                        <h3>Income Sources</h3>
+                        <canvas id="chart-income-cat"></canvas>
+                    </div>
+                </div>
+
+                <!-- Transactions Section -->
+                <h2 class="fin-section-title">Transactions</h2>
+                <div class="fin-filters">
+                    <select id="fin-month-filter">
+                        <option value="all">All Time</option>
+                    </select>
+                    <select id="fin-type-filter">
+                        <option value="all">All Types</option>
+                        <option value="income">Income Only</option>
+                        <option value="expense">Expenses Only</option>
+                    </select>
+                </div>
+
+                <!-- Transactions List -->
+                <div id="fin-transactions" class="fin-transactions"></div>
+
+                <!-- Transaction Modal -->
+                <div id="transaction-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Add Transaction</h2>
+                            <button class="modal-close" data-modal="transaction-modal">&times;</button>
+                        </div>
+                        <form id="transaction-form">
+                            <div class="form-tabs">
+                                <button type="button" class="txn-tab active" data-txn-type="expense">Expense</button>
+                                <button type="button" class="txn-tab" data-txn-type="income">Income</button>
+                            </div>
+                            <input type="hidden" id="txn-type" value="expense">
+
+                            <label>Description</label>
+                            <input type="text" id="txn-description" placeholder="e.g. Server hosting, Asset purchase, Tebex sale" required>
+
+                            <label>Amount ($)</label>
+                            <input type="number" id="txn-amount" placeholder="0.00" step="0.01" min="0.01" required>
+
+                            <label>Category</label>
+                            <select id="txn-category">
+                                <optgroup label="Expenses" id="txn-expense-cats">
+                                    <option value="hosting">Hosting</option>
+                                    <option value="assets">Assets / Scripts</option>
+                                    <option value="development">Development</option>
+                                    <option value="advertising">Advertising</option>
+                                    <option value="subscriptions">Subscriptions</option>
+                                    <option value="other-expense">Other</option>
+                                </optgroup>
+                                <optgroup label="Income" id="txn-income-cats">
+                                    <option value="tebex">Tebex</option>
+                                    <option value="donations">Donations</option>
+                                    <option value="other-income">Other</option>
+                                </optgroup>
+                            </select>
+
+                            <label>Date</label>
+                            <input type="date" id="txn-date" required>
+
+                            <label>Notes (optional)</label>
+                            <textarea id="txn-notes" rows="3" placeholder="Any additional details..."></textarea>
+
+                            <label>Receipt (optional, image)</label>
+                            <div class="file-upload-area" id="receipt-drop-area">
+                                <input type="file" id="txn-receipt" accept="image/*,.pdf" class="file-input">
+                                <p>Upload receipt image or PDF</p>
+                                <span class="file-hint">Max 2MB</span>
+                            </div>
+                            <div id="receipt-preview" class="hidden">
+                                <span id="receipt-file-name"></span>
+                                <button type="button" id="receipt-remove" class="btn-remove">Remove</button>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn-cancel" data-modal="transaction-modal">Cancel</button>
+                                <button type="submit" class="btn-submit" id="txn-submit-btn">Submit</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Receipt Viewer Modal -->
+                <div id="receipt-viewer-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Receipt</h2>
+                            <button class="modal-close" data-modal="receipt-viewer-modal">&times;</button>
+                        </div>
+                        <div id="receipt-viewer-body" style="padding:20px;text-align:center;"></div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Admin Panel -->
             <section id="page-admin" class="page">
                 <div class="page-header">
@@ -271,6 +421,7 @@
     </div>
 
     <!-- Firebase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
