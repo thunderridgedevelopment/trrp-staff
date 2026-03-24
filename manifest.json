@@ -1,0 +1,21 @@
+{
+    "name": "TRRP Staff Portal",
+    "short_name": "TRRP Staff",
+    "description": "Thunder Ridge RP Staff Portal",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#0c0e12",
+    "theme_color": "#0c0e12",
+    "icons": [
+        {
+            "src": "logo.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "logo.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
