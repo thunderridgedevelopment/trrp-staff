@@ -220,6 +220,7 @@ document.addEventListener("DOMContentLoaded", function () {
             rules: "Rules",
             changelog: "Changelog",
             financials: "Financials",
+            applications: "Applications",
             admin: "Admin Panel",
         };
 
@@ -267,6 +268,9 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             if (page === "financials") {
                 loadTransactions().then(renderFinancials);
+            }
+            if (page === "applications") {
+                loadApplications();
             }
         });
     });
@@ -1243,6 +1247,159 @@ document.addEventListener("DOMContentLoaded", function () {
             renderDashboard();
         }
     };
+
+    // ---- Applications ----
+    let applicationsData = [];
+    let applicationsUnsubscribe = null;
+
+    async function loadApplications() {
+        // Use real-time listener
+        if (applicationsUnsubscribe) applicationsUnsubscribe();
+
+        applicationsUnsubscribe = db.collection("applications")
+            .orderBy("submittedAt", "desc")
+            .onSnapshot((snapshot) => {
+                applicationsData = [];
+                snapshot.forEach((doc) => {
+                    applicationsData.push({ id: doc.id, ...doc.data() });
+                });
+                renderApplications();
+                populateFormFilter();
+            });
+
+        // Set up filter listeners
+        $("#app-status-filter").addEventListener("change", renderApplications);
+        $("#app-form-filter").addEventListener("change", renderApplications);
+        $("#app-search").addEventListener("input", renderApplications);
+    }
+
+    function populateFormFilter() {
+        const filter = $("#app-form-filter");
+        const forms = [...new Set(applicationsData.map(a => a.formTitle).filter(Boolean))];
+        const currentVal = filter.value;
+        filter.innerHTML = '<option value="all">All Forms</option>' +
+            forms.map(f => `<option value="${f}">${f}</option>`).join("");
+        filter.value = currentVal || "all";
+    }
+
+    function renderApplications() {
+        const statusFilter = $("#app-status-filter").value;
+        const formFilter = $("#app-form-filter").value;
+        const search = ($("#app-search").value || "").toLowerCase();
+
+        let filtered = applicationsData;
+
+        if (statusFilter !== "all") {
+            filtered = filtered.filter(a => a.status === statusFilter);
+        }
+        if (formFilter !== "all") {
+            filtered = filtered.filter(a => a.formTitle === formFilter);
+        }
+        if (search) {
+            filtered = filtered.filter(a =>
+                (a.applicant?.username || "").toLowerCase().includes(search) ||
+                (a.applicant?.tag || "").toLowerCase().includes(search)
+            );
+        }
+
+        // Update stats
+        const total = applicationsData.length;
+        const pending = applicationsData.filter(a => a.status === "pending").length;
+        const approved = applicationsData.filter(a => a.status === "approved").length;
+        const denied = applicationsData.filter(a => a.status === "denied").length;
+
+        $("#app-total").textContent = total;
+        $("#app-pending").textContent = pending;
+        $("#app-approved").textContent = approved;
+        $("#app-denied").textContent = denied;
+
+        const container = $("#app-list");
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="app-empty">No applications found.</div>';
+            return;
+        }
+
+        container.innerHTML = filtered.map(app => {
+            const date = app.submittedAt?.toDate
+                ? app.submittedAt.toDate().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                : "Unknown";
+            const avatar = app.applicant?.avatar || "";
+            const name = app.applicant?.username || app.applicant?.tag || "Unknown";
+            const formTitle = app.formTitle || app.formId || "Application";
+
+            return `
+                <div class="app-card" onclick="viewApplication('${app.id}')">
+                    ${avatar ? `<img src="${avatar}" class="app-card-avatar" alt="">` : `<div class="app-card-avatar" style="background:var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-weight:700;">${name.charAt(0).toUpperCase()}</div>`}
+                    <div class="app-card-info">
+                        <div class="app-card-name">${name}</div>
+                        <div class="app-card-form">${formTitle}</div>
+                    </div>
+                    <span class="app-card-status status-${app.status}">${app.status}</span>
+                    <span class="app-card-date">${date}</span>
+                </div>
+            `;
+        }).join("");
+    }
+
+    window.viewApplication = function (id) {
+        const app = applicationsData.find(a => a.id === id);
+        if (!app) return;
+
+        const avatar = app.applicant?.avatar || "";
+        const name = app.applicant?.username || app.applicant?.tag || "Unknown";
+        const userId = app.applicant?.userId || "";
+        const formTitle = app.formTitle || app.formId || "Application";
+        const date = app.submittedAt?.toDate
+            ? app.submittedAt.toDate().toLocaleString()
+            : "Unknown";
+
+        $("#app-detail-title").textContent = formTitle;
+
+        let html = `
+            <div class="app-detail-header">
+                ${avatar ? `<img src="${avatar}" class="app-detail-avatar" alt="">` : ""}
+                <div class="app-detail-meta">
+                    <h3>${name}</h3>
+                    <p>User ID: ${userId} &bull; Submitted: ${date}</p>
+                </div>
+                <span class="app-card-status status-${app.status}">${app.status}</span>
+            </div>
+        `;
+
+        // Render Q&A pairs
+        if (app.answers && app.answers.length > 0) {
+            html += app.answers.map(a => `
+                <div class="app-qa">
+                    <div class="app-qa-question">${a.question}</div>
+                    <div class="app-qa-answer">${a.answer}</div>
+                </div>
+            `).join("");
+        }
+
+        // Footer with review info
+        html += '<div class="app-detail-footer">';
+        if (app.reviewedBy) {
+            const reviewDate = app.reviewedAt?.toDate
+                ? app.reviewedAt.toDate().toLocaleString()
+                : "";
+            html += `<span class="app-detail-reviewed">${app.status === "approved" ? "Approved" : "Denied"} by ${app.reviewedBy}${reviewDate ? " on " + reviewDate : ""}</span>`;
+        }
+        if (app.denialReason) {
+            html += `<div class="app-detail-denial"><strong>Denial Reason:</strong> ${app.denialReason}</div>`;
+        }
+        html += '</div>';
+
+        $("#app-detail-body").innerHTML = html;
+        $("#app-detail-modal").classList.remove("hidden");
+    };
+
+    // Close application modal
+    document.addEventListener("click", (e) => {
+        if (e.target.matches('[data-modal="app-detail-modal"]')) {
+            $("#app-detail-modal").classList.add("hidden");
+        }
+    });
 
     // ---- Helpers ----
     function formatDate(dateStr) {

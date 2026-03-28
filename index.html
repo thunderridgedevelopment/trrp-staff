@@ -84,6 +84,7 @@
                 <li><a href="#" class="nav-link" data-page="rules">&#9878; Rules</a></li>
                 <li><a href="#" class="nav-link" data-page="changelog">&#128240; Changelog</a></li>
                 <li><a href="#" class="nav-link" data-page="financials">&#128176; Financials</a></li>
+                <li><a href="#" class="nav-link" data-page="applications">&#128203; Applications</a></li>
                 <li id="admin-nav" class="hidden"><a href="#" class="nav-link" data-page="admin">&#128274; Admin Panel</a></li>
             </ul>
             <div class="sidebar-footer">
@@ -392,6 +393,62 @@
                     </div>
                 </div>
 
+            </section>
+
+            <!-- Applications -->
+            <section id="page-applications" class="page">
+                <div class="page-header">
+                    <h1>Applications</h1>
+                    <p>Review submitted applications from Discord.</p>
+                </div>
+
+                <!-- App Stats -->
+                <div class="app-stats-row">
+                    <div class="app-stat">
+                        <span class="app-stat-num" id="app-total">0</span>
+                        <span class="app-stat-label">Total</span>
+                    </div>
+                    <div class="app-stat app-stat-pending">
+                        <span class="app-stat-num" id="app-pending">0</span>
+                        <span class="app-stat-label">Pending</span>
+                    </div>
+                    <div class="app-stat app-stat-approved">
+                        <span class="app-stat-num" id="app-approved">0</span>
+                        <span class="app-stat-label">Approved</span>
+                    </div>
+                    <div class="app-stat app-stat-denied">
+                        <span class="app-stat-num" id="app-denied">0</span>
+                        <span class="app-stat-label">Denied</span>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="app-filters">
+                    <select id="app-status-filter">
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="denied">Denied</option>
+                    </select>
+                    <select id="app-form-filter">
+                        <option value="all">All Forms</option>
+                    </select>
+                    <input type="text" id="app-search" placeholder="Search by applicant...">
+                </div>
+
+                <!-- Applications List -->
+                <div id="app-list" class="app-list"></div>
+
+                <!-- Application Detail Modal -->
+                <div id="app-detail-modal" class="modal hidden">
+                    <div class="modal-content modal-lg">
+                        <div class="modal-header">
+                            <h2 id="app-detail-title">Application Details</h2>
+                            <button class="modal-close" data-modal="app-detail-modal">&times;</button>
+                        </div>
+                        <div id="app-detail-body" class="app-detail-body"></div>
+                    </div>
+                </div>
             </section>
 
             <!-- Admin Panel -->
